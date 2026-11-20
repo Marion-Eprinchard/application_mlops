@@ -2,7 +2,7 @@
 Predict the price per m² of homes sold in Paris and its inner suburbs
 from DVF transactions enriched with Filosofi socio-economic data
 """
-
+import os
 from pathlib import Path
 
 import duckdb
@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import requests
 import seaborn as sns
+from dotenv import load_dotenv
 from lightgbm import LGBMRegressor
 from sklearn.base import clone
 from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
@@ -22,7 +23,10 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OrdinalEncoder
 from skore import EstimatorReport
 
-N_TREES = 1500
+from n_trees import N_TREES
+
+load_dotenv()
+
 LEARNING_RATE = 0.03
 NUM_LEAVES = 31
 NUMERIC_FEATURES = [
@@ -45,7 +49,7 @@ NUMERIC_FEATURES = [
 CATEGORICAL_FEATURES = ["code_commune", "type_local"]
 DEPARTEMENTS_PARIS = ["75", "92", "93", "94"]
 
-JETON_API = "1SuperJetonUltraConfidentiel!!!"
+JETON_API = os.environ["JETON_API"]
 
 DATA_LOCATION = Path("data")
 SOURCES = {
@@ -103,6 +107,7 @@ if bad == 0:
     print("Test OK: code_commune always has 5 characters starting with the department")
 else:
     print(f"Issue in code_commune: {bad} malformed codes")
+
 
 # TODO: generalize to all variables
 n_missing = con.sql("""

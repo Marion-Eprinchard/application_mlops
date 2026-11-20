@@ -1,0 +1,5 @@
+lightgbm
+skore
+pylint
+ruff
+python-dotenv
