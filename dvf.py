@@ -96,41 +96,50 @@ dvf = gpd.read_parquet(DATA_LOCATION / "dvf.parquet")
 # DuckDB cannot read the geometry column as Pandas formatted it
 dvf_attributs = dvf.drop(columns="geometry")
 
-bad = con.sql("""
-    SELECT COUNT(*) AS n_bad
-    FROM dvf_attributs
-    WHERE length(code_commune) <> 5
-    OR NOT starts_with(code_commune, code_departement)
-""").fetchall()[0][0]
 
-if bad == 0:
-    print("Test OK: code_commune always has 5 characters starting with the department")
-else:
-    print(f"Issue in code_commune: {bad} malformed codes")
+def check_code_commune_formatting(connection: duckdb.DuckDBPyConnection, df: pd.DataFrame):
+    """ Vérification “code_commune” est bien composée de 5 caractères
+    commençant par le code du département"""
+
+    query = (
+        "SELECT COUNT(*) AS n_bad "
+        "FROM df "
+        "WHERE length(code_commune) <> 5 "
+        "OR NOT starts_with(code_commune, code_departement)"
+    )
+
+    bad = connection.sql(query).fetchall()[0][0]
+
+    if bad == 0:
+        print("Test OK: code_commune always has 5 characters starting with the department")
+    else:
+        print(f"Issue in code_commune: {bad} malformed codes")
 
 
-# TODO: generalize to all variables
-n_missing = con.sql("""
-    SELECT COUNT(*) AS n_missing
-    FROM dvf_attributs
-    WHERE valeur_fonciere IS NULL
-""").fetchall()[0][0]
+def check_missing_values(connection: duckdb.DuckDBPyConnection, df: pd.DataFrame, var: str):
+    """recenser les valeurs manquantes pour une colonne donnée"""
+    query = f"SELECT COUNT(*) AS n_missing FROM df WHERE {var} IS NULL"
 
-message_ok = "No missing values for variable valeur_fonciere"
-message_warn = f"{n_missing} missing values for variable valeur_fonciere"
-message = message_ok if n_missing == 0 else message_warn
-print(message)
+    n_missing = connection.sql(query).fetchall()[0][0]
 
-n_missing = con.sql("""
-    SELECT COUNT(*) AS n_missing
-    FROM dvf_attributs
-    WHERE surface_reelle_bati IS NULL
-""").fetchall()[0][0]
+    message_ok = f"No missing values for variable {var}"
+    message_warn = f"{n_missing} missing values for variable {var}"
+    message = message_ok if n_missing == 0 else message_warn
+    print(message)
 
-message_ok = "No missing values for variable surface_reelle_bati"
-message_warn = f"{n_missing} missing values for variable surface_reelle_bati"
-message = message_ok if n_missing == 0 else message_warn
-print(message)
+
+def check_unseen_categories(train_data: pd.DataFrame, test_data: pd.DataFrame, var: str):
+    """vérifie que les modalités des variables catégorielles du test
+    sont toutes présentes dans l’apprentissage"""
+
+    if set(test_data[var].dropna().unique()) - set(
+        train_data[var].dropna().unique()
+    ):
+        message = f"Categories of {var} missing from the training set"
+    else:
+        message = f"All test categories of {var} are known to the model"
+
+    print(message)
 
 
 # SCOPE RESTRICTION ---------------------------------------
